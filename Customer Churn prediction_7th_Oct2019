@@ -1,0 +1,323 @@
+#Customer Churn Prediction for telco
+#author : Anwaar@Lukman Bin Abdullah
+#Date : 7th Oct 2019
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+telco = pd.read_csv(r'C:\Users\anwaar.abdullah\Downloads\Telecom_dataset.csv')
+
+telco.head()
+
+telco.shape
+telco.dtypes
+
+telco.isnull().sum() #Total nan values in TotalCharges column is 11
+
+#Remove the nan values in TotalCharges column
+telco = telco.dropna(subset=['TotalCharges'])
+
+telco['Customer Churn'] = telco['Customer Churn'].astype('category')
+telco['TotalCharges'] = telco['TotalCharges'].convert_objects(convert_numeric=True)
+
+#First and second business moment
+#1st business moment : Measure of central tendency (mean)
+
+#2nd business moment : Measure of Dispersion (range,std deviation)
+telco.describe()
+
+
+telco_numeric =  telco[["Time_Period", "MonthlyCharges", "TotalCharges"]]
+
+telco_numeric.dtypes
+
+#TotalCharges column has 11 nan value, drop all the nan values in this column
+telco_numeric.isnull().sum()
+
+telco_numeric = telco_numeric.dropna(subset=['TotalCharges'])
+
+#Third and forth business moment
+#3rd business moment : Skewness
+
+#4th business moment: Kurtosis
+
+print('Skew of Time_Period is',telco_numeric['Time_Period'].skew(), '& Kurtosis',telco_numeric['Time_Period'].kurt())
+print('Skew of MonthlyCharges is',telco_numeric['MonthlyCharges'].skew(), '& Kurtosis',telco_numeric['MonthlyCharges'].kurt())
+print('Skew of TotalCharges is',telco_numeric['TotalCharges'].skew(), '& Kurtosis',telco_numeric['TotalCharges'].kurt())
+
+
+fig = plt.figure(figsize=(14,4))
+title = fig.suptitle("Distribution Plot", fontsize=14)
+fig.subplots_adjust(top=0.85, wspace=0.2)
+
+ax1 = fig.add_subplot(1,2,1)
+#ax1.set_title("Time_Period")
+#ax1.set_xlabel("Time_Period")
+sns.distplot(telco_numeric['Time_Period'], ax=ax1,  kde=True, color='red', bins=100)
+
+#Plot the histogram
+ 
+ax2 = fig.add_subplot(1,2,2)   
+#ax2.set_title("MonthlyCharges")
+#ax2.set_xlabel("MonthlyCharges")
+sns.distplot(telco_numeric['MonthlyCharges'], ax=ax2, kde=True, color='blue', bins=100)
+
+ax3 = fig.add_subplot(2,2,1)   
+#ax3.set_title("TotalCharges")
+#ax3.set_xlabel("TotalCharges")
+sns.distplot(telco_numeric['TotalCharges'], ax=ax3, kde=True, color='green', bins=100)  
+
+telco.columns
+#Check the data whether they are balance or not
+
+telco_features = ['SC','Partner',
+       'Dependents', 'PhoneService', 'MultipleLines', 'InternetService',
+       'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+       'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',
+       'PaymentMethod', 'Gender', 'Customer Churn']
+
+ROWS, COLS = 4,5
+fig, ax = plt.subplots(ROWS, COLS, figsize=(18, 18))
+row, col = 0, 0
+for i, telco_features in enumerate(telco_features):
+    if col == COLS-1 :
+        row += 1
+    col = i % COLS
+    telco[telco_features].value_counts().plot('bar', ax=ax[row, col]).set_title(telco_features)
+    
+   sns.pairplot(telco,hue ='Customer Churn') 
+    
+#Data Normalization for Time_Period, MonthlyCharges and TotalCharges columns
+def norm_func(i):
+    x = (i-i.min())	/ (i.max()-i.min())
+    return (x)
+
+telco_n=norm_func(telco_numeric)
+telco_n.head()
+
+#Copy the rest of the features back to telco_n
+telco_n[['SC','Partner', 'Dependents',
+       'PhoneService', 'MultipleLines', 'InternetService',
+       'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+       'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',
+       'PaymentMethod', 'Gender','Customer Churn']]=telco[['SC', 'Partner', 'Dependents',
+       'PhoneService', 'MultipleLines', 'InternetService',
+       'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+       'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',
+       'PaymentMethod', 'Gender','Customer Churn']]
+
+#Need to create dummy for using in sklearn
+dummy = telco_n[['SC','Partner', 'Dependents',
+       'PhoneService', 'MultipleLines', 'InternetService',
+       'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+       'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',
+       'PaymentMethod', 'Gender','Customer Churn']]=telco[['SC', 'Partner', 'Dependents',
+       'PhoneService', 'MultipleLines', 'InternetService',
+       'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+       'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',
+       'PaymentMethod', 'Gender','Customer Churn']]
+       
+ dummy=pd.get_dummies(telco_n,drop_first=True)
+       
+  dummy.columns     
+       
+features =['Time_Period', 'MonthlyCharges', 'TotalCharges', 'SC', 'Partner_Yes',
+       'Dependents_Yes', 'PhoneService_Yes', 'MultipleLines_No phone service',
+       'MultipleLines_Yes', 'InternetService_Fiber optic',
+       'InternetService_No', 'OnlineSecurity_No internet service',
+       'OnlineSecurity_Yes', 'OnlineBackup_No internet service',
+       'OnlineBackup_Yes', 'DeviceProtection_No internet service',
+       'DeviceProtection_Yes', 'TechSupport_No internet service',
+       'TechSupport_Yes', 'StreamingTV_No internet service', 'StreamingTV_Yes',
+       'StreamingMovies_No internet service', 'StreamingMovies_Yes',
+       'Contract_One year', 'Contract_Two year', 'PaperlessBilling_Yes',
+       'PaymentMethod_Credit card (automatic)',
+       'PaymentMethod_Electronic check', 'PaymentMethod_Mailed check',
+       'Gender_Male']
+       
+       
+X = dummy[features] # Features
+y = dummy['Customer Churn_Yes']   
+       
+       
+#Model Creation :
+#1) Decision Tree Model
+from sklearn.tree import DecisionTreeClassifier # Import Decision Tree Classifier
+from sklearn.model_selection import train_test_split # Import train_test_split function
+from sklearn import metrics #Import scikit-learn metrics module for accuracy calculation
+​
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1) # 80% training and 20% test
+# Create Decision Tree classifer object
+clf = DecisionTreeClassifier()
+​
+# Train Decision Tree Classifer
+clf = clf.fit(X_train,y_train)
+​
+#Predict the response for test dataset
+y_pred = clf.predict(X_test)
+​
+# Model Accuracy, how often is the classifier correct?
+print("Decision Tree Model Accuracy:",metrics.accuracy_score(y_test, y_pred))
+​
+
+The Decision Tree Model Accuracy: 72.3%
+###############################################################################################################################
+2) Bagging Decision Tree Model
+from sklearn.ensemble import BaggingClassifier
+from sklearn.tree import DecisionTreeClassifier # Import Decision Tree Classifier
+from sklearn.model_selection import train_test_split # Import train_test_split function
+from sklearn import metrics #Import scikit-learn metrics module for accuracy calculation
+from sklearn import model_selection
+​
+seed = 10
+kfold = model_selection.KFold(n_splits=10, random_state=seed)
+cart = DecisionTreeClassifier()
+num_trees = 100
+model_bag = BaggingClassifier(base_estimator=cart, n_estimators=num_trees, random_state=seed)
+results = model_selection.cross_val_score(model_bag, X, y, cv=kfold)
+print("The model bagging Decision Tree accuracy :",results.mean())
+​
+The model bagging Decision Tree accuracy : 0.7827052081986292
+The Bagging Decision Tree Model Accuracy: 78.3%
+###############################################################################################################################
+3) Random Forest Model
+from sklearn.ensemble import RandomForestClassifier
+​
+​
+num_trees = 100
+kfold = model_selection.KFold(n_splits=20)
+model_rf = RandomForestClassifier(n_estimators=num_trees)
+results = model_selection.cross_val_score(model_rf, X, y, cv=kfold)
+print("The Random Forest model accuracy :",results.mean())
+The Random Forest model accuracy : 0.7925242003367005
+The Random Forest Model Accuracy: 79.3%
+###############################################################################################################################
+4) Boosting model
+from sklearn.ensemble import AdaBoostClassifier
+​
+​
+num_trees = 30
+kfold = model_selection.KFold(n_splits=10)
+model_boost = AdaBoostClassifier(n_estimators=num_trees)
+results = model_selection.cross_val_score(model_boost, X, y, cv=kfold)
+model_boost1 = model_boost.fit(X_train,y_train)
+print("The boosting model accuracy:",results.mean())
+The boosting model accuracy: 0.8090133195396353
+The Boosting Model Accuracy: 80.9%
+Plot the decision tree graph using Graphviz library
+from sklearn.tree import export_graphviz
+from sklearn.externals.six import StringIO  
+from IPython.display import Image  
+import pydotplus
+​
+#to solve the error GraphViz not working when imported inside PydotPlus (`GraphViz's executables not found`)
+import os
+​
+os.environ['PATH'] = os.environ['PATH']+';'+os.environ['CONDA_PREFIX']+r"\Library\bin\graphviz"
+​
+dot_data = StringIO()
+export_graphviz(clf, out_file=dot_data,  
+                filled=True, rounded=True,
+                special_characters=True,feature_names = features,class_names=['0','1'])
+​
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
+graph.write_png('custermer_churn.png')
+Image(graph.create_png())
+
+
+5) Naive Bayes Model
+from sklearn.naive_bayes import MultinomialNB
+​
+model_NB = MultinomialNB().fit(X_train, y_train)
+predicted = model_NB.predict(X_test)
+​
+print("The Naive-Bayes model accuracy : ",np.mean(predicted == y_test))
+The Naive-Bayes model accuracy :  0.7235252309879175
+
+The Naive Bayes Model Accuracy: 72.3%
+
+6) KNN model
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import metrics
+
+Find k value from the graph below
+k_range=range(1,85)
+scores={}
+scores_list=[]
+for k in k_range:
+    knn=KNeighborsClassifier(n_neighbors=k)
+    knn.fit(X_train,y_train)
+    y_pred=knn.predict( X_test)
+    scores[k]=metrics.accuracy_score(y_test,y_pred)
+    scores_list.append(metrics.accuracy_score(y_test,y_pred))
+    
+ %matplotlib inline
+import matplotlib.pyplot as plt
+
+#plot the relationship between k and testing accuracy
+plt.plot(k_range,scores_list)
+plt.xlabel('Value of k for KNN')
+plt.ylabel('Testing Accuracy')
+
+
+from the plot we choose k=23 which is the highest accuracy ~0.795
+
+knn=KNeighborsClassifier(n_neighbors=23)
+knn.fit(X_train,y_train)
+y_pred=knn.predict(X_test)
+
+pd.crosstab(y_test,y_pred,rownames=['Actual'],colnames=['Predicted'])
+
+print("The KNN model accuracy is:",(904+203)/len(y_test))
+The KNN Model Accuracy: 78.7%
+
+7) Logistics Regression Model
+
+from sklearn.linear_model import LogisticRegression
+logisticRegr = LogisticRegression()
+logisticRegr.fit(X_train, y_train)
+y_pred=logisticRegr.predict(X_test)
+
+pd.crosstab(y_test,y_pred,rownames=['Actual'],colnames=['Predicted'])
+print("The Logistic Regression model accuracy is:",(926+196)/len(y_test))
+
+
+8) Support Vector Machine model
+from sklearn.svm import SVC
+​
+# kernel = linear
+model_linear = SVC(kernel = "linear")
+model_linear.fit(X_train,y_train)
+pred_test_linear = model_linear.predict(X_test)
+​
+print("The SVM model accuracy is:", np.mean(pred_test_linear==y_test))
+​
+​
+#X_train, X_test, y_train, y_test
+​
+The SVM model accuracy is: 0.7931769722814499
+Conclusion :
+1.The Decision Tree Model Accuracy: 72.3%
+2.The Bagging Decision Tree Model Accuracy: 78.3%
+3.The Random Forest Model Accuracy: 79.3%
+4.The Boosting Model Accuracy: 80.9%
+5.The Naive Bayes Model Accuracy: 72.3%
+6.The KNN Model Accuracy: 78.7%
+7.The Logistic Regression Model Accuracy: 79.7%
+8.The SVM Model Accuracy: 79.3%¶
+
+
+
+
+
+
+
+
+
+
+
+
+
